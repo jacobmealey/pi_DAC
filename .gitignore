@@ -1,0 +1,11 @@
+build/*
+.*.swp
+*/.*.swp
+*.csv
+__pycache__
+w
+wgen*
+calconfig.txt
+state.txt
+*mod
+*ko
