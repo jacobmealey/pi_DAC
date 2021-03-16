@@ -23,6 +23,7 @@
 #include <linux/platform_device.h>
 #include <linux/pinctrl/consumer.h>
 #include <linux/gpio/consumer.h>
+#include <linux/delay.h>
 #include <linux/jiffies.h>
 
 #include "dac.h"
@@ -177,6 +178,7 @@ static char *dac_devnode(struct device *dev, umode_t *mode)
 static int __init dac_probe(void)
 {
 	int ret=-1;	// Return value
+	int i;
 
 	// Allocate device driver data and save
 	dac_dat=kmalloc(sizeof(struct dac_data_t),GFP_KERNEL);
@@ -228,6 +230,15 @@ static int __init dac_probe(void)
 	if (dac_dat->gpio_dac_b6==NULL) goto fail;
 	dac_dat->gpio_dac_b7=dac_obtain_pin(dac_dat->dac_dev,25,"DAC_b7",0);
 	if (dac_dat->gpio_dac_b7==NULL) goto fail;
+
+
+	for(i = 0; i < 10; i++){
+		mdelay(500);
+		gpiod_set_value(dac_dat->gpio_dac_b0, 1);
+		mdelay(500);
+		gpiod_set_value(dac_dat->gpio_dac_b0, 0);
+
+	}
 
 	// Initialize locking below this line
 
