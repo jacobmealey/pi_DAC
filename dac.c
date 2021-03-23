@@ -23,8 +23,8 @@
 #include <linux/platform_device.h>
 #include <linux/pinctrl/consumer.h>
 #include <linux/gpio/consumer.h>
-#include <linux/delay.h>
 #include <linux/jiffies.h>
+#include <linux/stat.h>
 
 #include "dac.h"
 
@@ -112,7 +112,7 @@ static int dac_release(struct inode *inode, struct file *filp)
     return 0;
 }
 
-// File operations for the dac device
+// File operations for the dac device.  Uninitialized will be NULL.
 static const struct file_operations dac_fops = {
 	.owner = THIS_MODULE,	// Us
 	.open = dac_open,		// Open
@@ -121,6 +121,7 @@ static const struct file_operations dac_fops = {
 	.unlocked_ioctl=dac_ioctl,	// ioctl
 };
 
+// Allocate our GPIO pins from the kernel
 // Init value<0 means input
 static struct gpio_desc *dac_obtain_pin(struct device *dev, int pin, char *name, int init_val)
 {
@@ -167,18 +168,14 @@ fail:
 // Sets device node permission on the /dev device special file
 static char *dac_devnode(struct device *dev, umode_t *mode)
 {
-	if (mode) *mode = 0666;
+	if (mode) *mode = S_IRUGO|S_IWUGO;
 	return NULL;
 }
 
-// My data is going to go in either platform_data or driver_data
-//  within &pdev->dev. (dev_set/get_drvdata)
-// Called when the device is "found" - for us
-// This is called on module load based on ".of_match_table" member
+// This is called on module load.
 static int __init dac_probe(void)
 {
 	int ret=-1;	// Return value
-	int i;
 
 	// Allocate device driver data and save
 	dac_dat=kmalloc(sizeof(struct dac_data_t),GFP_KERNEL);
@@ -231,15 +228,6 @@ static int __init dac_probe(void)
 	dac_dat->gpio_dac_b7=dac_obtain_pin(dac_dat->dac_dev,25,"DAC_b7",0);
 	if (dac_dat->gpio_dac_b7==NULL) goto fail;
 
-
-	for(i = 0; i < 10; i++){
-		mdelay(500);
-		gpiod_set_value(dac_dat->gpio_dac_b0, 1);
-		mdelay(500);
-		gpiod_set_value(dac_dat->gpio_dac_b0, 0);
-
-	}
-
 	// Initialize locking below this line
 
 
@@ -262,14 +250,14 @@ fail:
 	// Class cleanup
 	if (dac_dat->dac_class) class_destroy(dac_dat->dac_class);
 	// char dev clean up
-	if (dac_dat->dac_major) unregister_chrdev(dac_dat->dac_major,"dac");
+	if (dac_dat->dac_major>0) unregister_chrdev(dac_dat->dac_major,"dac");
 
 	kfree(dac_dat);
 	printk(KERN_INFO "DAC Failed\n");
 	return ret;
 }
 
-// Called when the device is removed or the module is removed
+// Called when the module is removed.
 static void __exit dac_remove(void)
 {
 	// Free the gpio pins with devm_gpio_free() & gpiod_put()
@@ -283,22 +271,11 @@ static void __exit dac_remove(void)
 	devm_gpio_free(dac_dat->dac_dev,desc_to_gpio(dac_dat->gpio_dac_b0));
 
 	// Device cleanup
-	device_destroy(dac_dat->dac_class,MKDEV(dac_dat->dac_major,0));
+	if (dac_dat->dac_dev) device_destroy(dac_dat->dac_class,MKDEV(dac_dat->dac_major,0));
 	// Class cleanup
-	class_destroy(dac_dat->dac_class);
+	if (dac_dat->dac_class) class_destroy(dac_dat->dac_class);
 	// Remove char dev
-	unregister_chrdev(dac_dat->dac_major,"dac");
-#if 0
-	// not clear if these are allocated and need to be freed
-	gpiod_put(dac_dat->dac_b7);
-	gpiod_put(dac_dat->dac_b6);
-	gpiod_put(dac_dat->dac_b5);
-	gpiod_put(dac_dat->dac_b4);
-	gpiod_put(dac_dat->dac_b3);
-	gpiod_put(dac_dat->dac_b2);
-	gpiod_put(dac_dat->dac_b1);
-	gpiod_put(dac_dat->dac_b0);
-#endif
+	if (dac_dat->dac_major>0) unregister_chrdev(dac_dat->dac_major,"dac");
 	
 	// Free the device driver data
 	if (dac_dat!=NULL) {
