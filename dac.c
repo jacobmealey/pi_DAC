@@ -83,6 +83,7 @@ static long dac_ioctl(struct file * filp, unsigned int cmd, unsigned long arg)
 static ssize_t dac_write(struct file *filp, const char __user * buf, size_t count, loff_t * offp)
 {
 
+	uint8_t i;
 	size_t data_len = 30;
 	size_t num_copied;
 	uint8_t data[30];
@@ -97,14 +98,26 @@ static ssize_t dac_write(struct file *filp, const char __user * buf, size_t coun
 	num_copied = copy_from_user(data, buf, data_len);
 
 	if(num_copied == 0){
-		printk("dac_write: Copied %zd bytes", data_len);
+		printk("dac_write: Copied %d bytes", data_len);
 	} else {
-		printk("dac_write: Copied %zd bytes", num_copied);
+		printk("dac_write: Copied %d bytes", num_copied);
 	}
 	
 	data[data_len] = 0;
-
-	printk("Copied %s from userspace", data);
+	// ----- Beginning of writing to pins ----- //
+	for(i = 0; i < data_len; i++){
+		gpiod_set_value(dac_dat->gpio_dac_b7, (data[i] >> 7) & 0x1);
+		gpiod_set_value(dac_dat->gpio_dac_b6, (data[i] >> 6) & 0x1);
+		gpiod_set_value(dac_dat->gpio_dac_b5, (data[i] >> 5) & 0x1);
+		gpiod_set_value(dac_dat->gpio_dac_b4, (data[i] >> 4) & 0x1);
+		gpiod_set_value(dac_dat->gpio_dac_b3, (data[i] >> 3) & 0x1);
+		gpiod_set_value(dac_dat->gpio_dac_b2, (data[i] >> 2) & 0x1);
+		gpiod_set_value(dac_dat->gpio_dac_b1, (data[i] >> 1) & 0x1);
+		gpiod_set_value(dac_dat->gpio_dac_b0, (data[i]) & 0x1);
+		// this will need to a better calculated value maybe usleep
+		msleep(500);
+		printk("Copied %zd from userspace", data[i]);
+	}
 
 	return count;
 }
