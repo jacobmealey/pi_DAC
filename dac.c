@@ -83,7 +83,30 @@ static long dac_ioctl(struct file * filp, unsigned int cmd, unsigned long arg)
 static ssize_t dac_write(struct file *filp, const char __user * buf, size_t count, loff_t * offp)
 {
 
-	return 0;
+	size_t data_len = 30;
+	size_t num_copied;
+	uint8_t data[30];
+	if(count == 0){
+		return 0;
+	}
+
+	if(count < data_len){
+		data_len = count;
+	}
+
+	num_copied = copy_from_user(data, buf, data_len);
+
+	if(num_copied == 0){
+		printk("dac_write: Copied %zd bytes", data_len);
+	} else {
+		printk("dac_write: Copied %zd bytes", num_copied);
+	}
+	
+	data[data_len] = 0;
+
+	printk("Copied %s from userspace", data);
+
+	return count;
 }
 
 // You will need to choose the type of locking yourself.  It may be atmonic variables, spinlocks, mutex, or semaphore.
@@ -101,6 +124,7 @@ static ssize_t dac_write(struct file *filp, const char __user * buf, size_t coun
 static int dac_open(struct inode *inode, struct file *filp)
 {
 
+	printk(KERN_INFO "dac opened");
 	return 0;
 }
 
@@ -109,6 +133,7 @@ static int dac_open(struct inode *inode, struct file *filp)
 static int dac_release(struct inode *inode, struct file *filp)
 {
 
+    printk(KERN_INFO "dac released");
     return 0;
 }
 
