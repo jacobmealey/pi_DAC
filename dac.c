@@ -84,28 +84,27 @@ static ssize_t dac_write(struct file *filp, const char __user * buf, size_t coun
 {
 
 	uint8_t i;
-	size_t data_len = 30;
 	size_t num_copied;
-	uint8_t data[30];
+	uint8_t *data = kmalloc(sizeof(char) * count, GFP_KERNEL);
+	if(data == NULL){
+		printk("dac_write: Not Enough Memory");
+		return ENOMEM;
+	}
 	if(count == 0){
 		return 0;
 	}
 
-	if(count < data_len){
-		data_len = count;
-	}
-
-	num_copied = copy_from_user(data, buf, data_len);
+	num_copied = copy_from_user(data, buf, count);
 
 	if(num_copied == 0){
-		printk("dac_write: Copied %d bytes", data_len);
+		printk("dac_write: Copied %d bytes", 0); 
 	} else {
 		printk("dac_write: Copied %d bytes", num_copied);
 	}
 	
-	data[data_len] = 0;
+	data[count] = 0;
 	// ----- Beginning of writing to pins ----- //
-	for(i = 0; i < data_len; i++){
+	for(i = 0; i < num_copied; i++){
 		gpiod_set_value(dac_dat->gpio_dac_b7, (data[i] >> 7) & 0x1);
 		gpiod_set_value(dac_dat->gpio_dac_b6, (data[i] >> 6) & 0x1);
 		gpiod_set_value(dac_dat->gpio_dac_b5, (data[i] >> 5) & 0x1);
@@ -115,9 +114,10 @@ static ssize_t dac_write(struct file *filp, const char __user * buf, size_t coun
 		gpiod_set_value(dac_dat->gpio_dac_b1, (data[i] >> 1) & 0x1);
 		gpiod_set_value(dac_dat->gpio_dac_b0, (data[i]) & 0x1);
 		// this will need to a better calculated value maybe usleep
-		msleep(500);
+		msleep(10);
 		printk("Copied %zd from userspace", data[i]);
 	}
+	kfree(data);
 
 	return count;
 }
