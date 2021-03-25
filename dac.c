@@ -85,28 +85,31 @@ static ssize_t dac_write(struct file *filp, const char __user * buf, size_t coun
 
 	uint8_t i;
 	uint8_t num_copied;
-	char *data = kmalloc(sizeof(char) * count, GFP_KERNEL);
+	char *data = kmalloc(count, GFP_KERNEL);
 
 	printk("count: %d", count);
+	// Return error NOMEM if we can't allocate kernel memory
 	if(data == NULL){
 		printk("dac_write: Not Enough Memory");
 		return ENOMEM;
-	}
-	if(count == 0){
-		return 0;
 	}
 
 	num_copied = copy_from_user(data, buf, count);
 
 	printk("data: %s", data);
 
+	// If there was an error copying from user space return EFAULT
 	if(num_copied == 0){
 		printk("dac_write: Copied %d bytes succesfully", count); 
 	} else {
 		printk("dac_write: Copied %d bytes failed", num_copied);
+		return EFAULT;
 	}
 	
+	// set data[count] to zero to make sure the dac isn't left on
+	// perhaps this should be done in dac_release()?
 	data[count] = 0;
+
 	// ----- Beginning of writing to pins ----- //
 	for(i = 0; i < count; i++){
 		gpiod_set_value(dac_dat->gpio_dac_b7, (data[i] >> 7) & 0x1);
@@ -121,8 +124,11 @@ static ssize_t dac_write(struct file *filp, const char __user * buf, size_t coun
 		msleep(10);
 		printk("Copied %zd from userspace", data[i]);
 	}
-	kfree(data);
 
+	
+	// This free() is only being called if the code is succseful, if the
+	// function fails at some point we will not get the memory back!
+	kfree(data);
 	return count;
 }
 
