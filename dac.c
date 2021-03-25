@@ -84,8 +84,10 @@ static ssize_t dac_write(struct file *filp, const char __user * buf, size_t coun
 {
 
 	uint8_t i;
-	size_t num_copied;
-	uint8_t *data = kmalloc(sizeof(char) * count, GFP_KERNEL);
+	uint8_t num_copied;
+	char *data = kmalloc(sizeof(char) * count, GFP_KERNEL);
+
+	printk("count: %d", count);
 	if(data == NULL){
 		printk("dac_write: Not Enough Memory");
 		return ENOMEM;
@@ -96,15 +98,17 @@ static ssize_t dac_write(struct file *filp, const char __user * buf, size_t coun
 
 	num_copied = copy_from_user(data, buf, count);
 
+	printk("data: %s", data);
+
 	if(num_copied == 0){
-		printk("dac_write: Copied %d bytes", 0); 
+		printk("dac_write: Copied %d bytes succesfully", count); 
 	} else {
-		printk("dac_write: Copied %d bytes", num_copied);
+		printk("dac_write: Copied %d bytes failed", num_copied);
 	}
 	
 	data[count] = 0;
 	// ----- Beginning of writing to pins ----- //
-	for(i = 0; i < num_copied; i++){
+	for(i = 0; i < count; i++){
 		gpiod_set_value(dac_dat->gpio_dac_b7, (data[i] >> 7) & 0x1);
 		gpiod_set_value(dac_dat->gpio_dac_b6, (data[i] >> 6) & 0x1);
 		gpiod_set_value(dac_dat->gpio_dac_b5, (data[i] >> 5) & 0x1);
