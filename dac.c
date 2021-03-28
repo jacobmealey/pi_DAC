@@ -25,6 +25,7 @@
 #include <linux/gpio/consumer.h>
 #include <linux/jiffies.h>
 #include <linux/stat.h>
+#include <linux/semaphore.h>
 
 #include "dac.h"
 
@@ -47,6 +48,7 @@ struct dac_data_t {
 	u32 dac_freq;						// DAC Frequency in Hz
 
 	// Locking variable appears after this line
+	struct semaphore sem;
 };
 
 // DAC data structure access between functions
@@ -122,7 +124,7 @@ static ssize_t dac_write(struct file *filp, const char __user * buf, size_t coun
 		gpiod_set_value(dac_dat->gpio_dac_b0, (data[i]) & 0x1);
 		// this will need to a better calculated value maybe usleep
 		msleep(10);
-		printk("Copied %zd from userspace", data[i]);
+		printk("Copied %c from userspace", data[i]);
 	}
 
 	
@@ -146,8 +148,11 @@ static ssize_t dac_write(struct file *filp, const char __user * buf, size_t coun
 //       Acquire the lock
 static int dac_open(struct inode *inode, struct file *filp)
 {
-
 	printk(KERN_INFO "dac opened");
+	if(down_interruptible(&dac_dat->sem)){
+		printk("Could not acquire lock. sorry.");
+		return -ERESTARTSYS;
+	}
 	return 0;
 }
 
@@ -155,7 +160,7 @@ static int dac_open(struct inode *inode, struct file *filp)
 // Release the lock
 static int dac_release(struct inode *inode, struct file *filp)
 {
-
+    up(&dac_dat->sem);
     printk(KERN_INFO "dac released");
     return 0;
 }
@@ -219,7 +224,7 @@ static char *dac_devnode(struct device *dev, umode_t *mode)
 	if (mode) *mode = S_IRUGO|S_IWUGO;
 	return NULL;
 }
-
+;
 // This is called on module load.
 static int __init dac_probe(void)
 {
@@ -277,6 +282,8 @@ static int __init dac_probe(void)
 	if (dac_dat->gpio_dac_b7==NULL) goto fail;
 
 	// Initialize locking below this line
+	printk("Beginning Semaphore setup");
+	sema_init(&dac_dat->sem, 1); // Is this it? this seems to easy :/
 
 
 	printk(KERN_INFO "Registered\n");
