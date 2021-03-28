@@ -8,6 +8,9 @@
 
 // Magic number
 
-// IOCTL for Enable, Disable, and setting the sample frequency.
+// IOCTL commands for Enable, Disable, and setting the sample frequency.
+#define DAC_EN 1 
+#define DAC_DE 2
+#define DAC_SF 3
 
 #endif	// DAC_H

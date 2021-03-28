@@ -62,9 +62,23 @@ static long dac_ioctl(struct file * filp, unsigned int cmd, unsigned long arg)
 {
 	long ret=0;					// Return value
 
+	printk("Command: %d", cmd);
+	printk("argument: %ld", arg);
 
 	// IOCTL cmds
 	switch (cmd) {
+		case DAC_EN:
+			printk("Dac Enabled");
+			dac_dat->dac_enable = true;
+			break;
+		case DAC_DE:
+			printk("Dac Disabled");
+			dac_dat->dac_enable = false;
+			break;
+		case DAC_SF:
+			printk("Set frequency to %ld", arg);
+			dac_dat->dac_freq = arg;
+			break;
 		default:
 			ret=-EINVAL;
 			break;
@@ -85,52 +99,57 @@ static long dac_ioctl(struct file * filp, unsigned int cmd, unsigned long arg)
 static ssize_t dac_write(struct file *filp, const char __user * buf, size_t count, loff_t * offp)
 {
 
-	uint8_t i;
-	uint8_t num_copied;
-	char *data = kmalloc(count, GFP_KERNEL);
+	if(dac_dat->dac_enable){
+		uint8_t i;
+		uint8_t num_copied;
+		char *data = kmalloc(count, GFP_KERNEL);
 
-	printk("count: %d", count);
-	// Return error NOMEM if we can't allocate kernel memory
-	if(data == NULL){
-		printk("dac_write: Not Enough Memory");
-		return ENOMEM;
-	}
+		printk("count: %d", count);
+		// Return error NOMEM if we can't allocate kernel memory
+		if(data == NULL){
+			printk("dac_write: Not Enough Memory");
+			return ENOMEM;
+		}
 
-	num_copied = copy_from_user(data, buf, count);
+		num_copied = copy_from_user(data, buf, count);
 
-	printk("data: %s", data);
+		printk("data: %s", data);
 
-	// If there was an error copying from user space return EFAULT
-	if(num_copied == 0){
-		printk("dac_write: Copied %d bytes succesfully", count); 
+		// If there was an error copying from user space return EFAULT
+		if(num_copied == 0){
+			printk("dac_write: Copied %d bytes succesfully", count); 
+		} else {
+			printk("dac_write: Copied %d bytes failed", num_copied);
+			return EFAULT;
+		}
+		
+		// set data[count] to zero to make sure the dac isn't left on
+		// perhaps this should be done in dac_release()?
+		data[count] = 0;
+
+		// ----- Beginning of writing to pins ----- //
+		for(i = 0; i < count; i++){
+			gpiod_set_value(dac_dat->gpio_dac_b7, (data[i] >> 7) & 0x1);
+			gpiod_set_value(dac_dat->gpio_dac_b6, (data[i] >> 6) & 0x1);
+			gpiod_set_value(dac_dat->gpio_dac_b5, (data[i] >> 5) & 0x1);
+			gpiod_set_value(dac_dat->gpio_dac_b4, (data[i] >> 4) & 0x1);
+			gpiod_set_value(dac_dat->gpio_dac_b3, (data[i] >> 3) & 0x1);
+			gpiod_set_value(dac_dat->gpio_dac_b2, (data[i] >> 2) & 0x1);
+			gpiod_set_value(dac_dat->gpio_dac_b1, (data[i] >> 1) & 0x1);
+			gpiod_set_value(dac_dat->gpio_dac_b0, (data[i]) & 0x1);
+			// this will need to a better calculated value maybe usleep
+			msleep(1000/(dac_dat->dac_freq));
+			printk("Copied %c from userspace", data[i]);
+		}
+
+		
+		// This free() is only being called if the code is succseful, if the
+		// function fails at some point we will not get the memory back!
+		kfree(data);
 	} else {
-		printk("dac_write: Copied %d bytes failed", num_copied);
-		return EFAULT;
+		printk("No access");
+		return -EACCES;
 	}
-	
-	// set data[count] to zero to make sure the dac isn't left on
-	// perhaps this should be done in dac_release()?
-	data[count] = 0;
-
-	// ----- Beginning of writing to pins ----- //
-	for(i = 0; i < count; i++){
-		gpiod_set_value(dac_dat->gpio_dac_b7, (data[i] >> 7) & 0x1);
-		gpiod_set_value(dac_dat->gpio_dac_b6, (data[i] >> 6) & 0x1);
-		gpiod_set_value(dac_dat->gpio_dac_b5, (data[i] >> 5) & 0x1);
-		gpiod_set_value(dac_dat->gpio_dac_b4, (data[i] >> 4) & 0x1);
-		gpiod_set_value(dac_dat->gpio_dac_b3, (data[i] >> 3) & 0x1);
-		gpiod_set_value(dac_dat->gpio_dac_b2, (data[i] >> 2) & 0x1);
-		gpiod_set_value(dac_dat->gpio_dac_b1, (data[i] >> 1) & 0x1);
-		gpiod_set_value(dac_dat->gpio_dac_b0, (data[i]) & 0x1);
-		// this will need to a better calculated value maybe usleep
-		msleep(10);
-		printk("Copied %c from userspace", data[i]);
-	}
-
-	
-	// This free() is only being called if the code is succseful, if the
-	// function fails at some point we will not get the memory back!
-	kfree(data);
 	return count;
 }
 
@@ -286,6 +305,8 @@ static int __init dac_probe(void)
 	// Initialize locking below this line
 	printk("Beginning Semaphore setup");
 	sema_init(&dac_dat->sem, 1); // Is this it? this seems to easy :/
+
+	dac_dat->dac_freq = 1000;
 
 
 	printk(KERN_INFO "Registered\n");
