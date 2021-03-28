@@ -152,6 +152,8 @@ static int dac_open(struct inode *inode, struct file *filp)
 	if(down_interruptible(&dac_dat->sem)){
 		printk("Could not acquire lock. sorry.");
 		return -ERESTARTSYS;
+	} else {
+		printk("Acquired Lock, Moving forward");
 	}
 	return 0;
 }
