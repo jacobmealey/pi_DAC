@@ -16,27 +16,37 @@
  * a cycle is divided into.
  */
 void generate_sin_buffer(char ** buff, int cycles, int resolution);
+void write_to_dac(char * buff, int size, int DEL);
 
 int main() 
 {
-	char * buff = NULL;
-	generate_sin_buffer(&buff, 2, RESOLUTION);
+	if(fork() == 0){
+		char * buff = NULL;
+		generate_sin_buffer(&buff, 2, RESOLUTION);
+		write_to_dac(buff, 2*RESOLUTION, 200);	
+	}else{
+		char * buff = NULL;
+		generate_sin_buffer(&buff, 1, 2*RESOLUTION);
+		write_to_dac(buff, 2*RESOLUTION, 1000);
+	}
+
+	return 0;
+}
+
+// An abstracting function for wrint to the DAC,
+void write_to_dac(char * buff, int size, int DEL){
 	printf("%d", buff[0]);
 
 	int fd = open("/dev/dac", O_WRONLY);
 
 	if(fd){
 		ioctl(fd, DAC_EN);
-		ioctl(fd, DAC_SD, 100);
-		printf("%d", write(fd, buff, 2*RESOLUTION));
+		ioctl(fd, DAC_SD, DEL);
+		printf("%d", write(fd, buff, size));
 		ioctl(fd, DAC_DE);
 		close(fd);
-	}	
-
-
-	return 0;
+	}
 }
-
 void generate_sin_buffer(char ** buff, int cycles, int resolution)
 {
 	free(*buff);

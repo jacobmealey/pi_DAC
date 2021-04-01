@@ -138,7 +138,7 @@ static ssize_t dac_write(struct file *filp, const char __user * buf, size_t coun
 			gpiod_set_value(dac_dat->gpio_dac_b0, (data[i]) & 0x1);
 			// Might need to be a usleep range.
 			udelay(dac_dat->dac_freq);
-			printk("iter: %d, set gpio to %d", i, data[i]);
+			//printk("iter: %d, set gpio to %d", i, data[i]);
 		}
 
 		
