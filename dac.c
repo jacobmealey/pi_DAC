@@ -75,7 +75,7 @@ static long dac_ioctl(struct file * filp, unsigned int cmd, unsigned long arg)
 			printk("Dac Disabled");
 			dac_dat->dac_enable = false;
 			break;
-		case DAC_SF:
+		case DAC_SD:
 			printk("Set frequency to %ld", arg);
 			dac_dat->dac_freq = arg;
 			break;
@@ -98,11 +98,10 @@ static long dac_ioctl(struct file * filp, unsigned int cmd, unsigned long arg)
 // Use propriate types
 static ssize_t dac_write(struct file *filp, const char __user * buf, size_t count, loff_t * offp)
 {
-
 	if(dac_dat->dac_enable){
 		uint8_t i;
 		uint8_t num_copied;
-		char *data = kmalloc(count, GFP_KERNEL);
+		char *data = kmalloc(count * sizeof(char), GFP_KERNEL);
 
 		printk("count: %d", count);
 		// Return error NOMEM if we can't allocate kernel memory
@@ -137,9 +136,9 @@ static ssize_t dac_write(struct file *filp, const char __user * buf, size_t coun
 			gpiod_set_value(dac_dat->gpio_dac_b2, (data[i] >> 2) & 0x1);
 			gpiod_set_value(dac_dat->gpio_dac_b1, (data[i] >> 1) & 0x1);
 			gpiod_set_value(dac_dat->gpio_dac_b0, (data[i]) & 0x1);
-			// this will need to a better calculated value maybe usleep
-			msleep(1000/(dac_dat->dac_freq));
-			printk("Copied %c from userspace", data[i]);
+			// Might need to be a usleep range.
+			udelay(dac_dat->dac_freq);
+			printk("iter: %d, set gpio to %d", i, data[i]);
 		}
 
 		
