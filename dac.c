@@ -99,35 +99,33 @@ static long dac_ioctl(struct file * filp, unsigned int cmd, unsigned long arg)
 static ssize_t dac_write(struct file *filp, const char __user * buf, size_t count, loff_t * offp)
 {
 	if(dac_dat->dac_enable){
-		uint8_t i;
+		int i;
 		uint8_t num_copied;
-		char *data = kmalloc(count * sizeof(char), GFP_KERNEL);
+		char *data = kmalloc(count, GFP_KERNEL);
 
 		printk("count: %d", count);
 		// Return error NOMEM if we can't allocate kernel memory
 		if(data == NULL){
 			printk("dac_write: Not Enough Memory");
-			return ENOMEM;
+			return -ENOMEM;
 		}
 
 		num_copied = copy_from_user(data, buf, count);
-
-		printk("data: %s", data);
-
 		// If there was an error copying from user space return EFAULT
 		if(num_copied == 0){
 			printk("dac_write: Copied %d bytes succesfully", count); 
 		} else {
 			printk("dac_write: Copied %d bytes failed", num_copied);
-			return EFAULT;
+			kfree(data);
+			return -EFAULT;
 		}
-		
-		// set data[count] to zero to make sure the dac isn't left on
 		// perhaps this should be done in dac_release()?
-		data[count] = 0;
+		//data[count] = 0;
 
 		// ----- Beginning of writing to pins ----- //
-		for(i = 0; i < count; i++){
+		printk("beginning of for loop");
+		i = 0;
+		while(i < count){
 			gpiod_set_value(dac_dat->gpio_dac_b7, (data[i] >> 7) & 0x1);
 			gpiod_set_value(dac_dat->gpio_dac_b6, (data[i] >> 6) & 0x1);
 			gpiod_set_value(dac_dat->gpio_dac_b5, (data[i] >> 5) & 0x1);
@@ -138,6 +136,7 @@ static ssize_t dac_write(struct file *filp, const char __user * buf, size_t coun
 			gpiod_set_value(dac_dat->gpio_dac_b0, (data[i]) & 0x1);
 			// Might need to be a usleep range.
 			udelay(dac_dat->dac_freq);
+			i++;
 			//printk("iter: %d, set gpio to %d", i, data[i]);
 		}
 

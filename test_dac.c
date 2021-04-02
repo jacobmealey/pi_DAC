@@ -22,12 +22,13 @@ int main()
 {
 	if(fork() == 0){
 		char * buff = NULL;
-		generate_sin_buffer(&buff, 2, RESOLUTION);
-		write_to_dac(buff, 2*RESOLUTION, 200);	
+		generate_sin_buffer(&buff, 2, 200);
+		write_to_dac(buff, 2*200, 1);	
+		printf("child\n");
 	}else{
 		char * buff = NULL;
-		generate_sin_buffer(&buff, 1, 2*RESOLUTION);
-		write_to_dac(buff, 2*RESOLUTION, 1000);
+		generate_sin_buffer(&buff, 5, 256);
+		write_to_dac(buff, 5*255, 10);
 	}
 
 	return 0;
