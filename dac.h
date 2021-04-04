@@ -12,8 +12,8 @@
 // IOCTL commands for Enable, Disable, and setting the sample frequency.
 #define DAC_EN 1 // Dac Enable - for turning on the DAC
 #define DAC_DE 2 // Dac Disable - for turning off the DAC
-#define DAC_SD 3 // Dac Set Delay - for setting the delay between 
-		 // writes in the buffer
+// This needs to be a frequncy :)
+#define DAC_SD 3 // Dac Set Delay - for setting the delay betwee
 
 #define MAX_DELAY 1000000 // MAX delay is one second.
 
