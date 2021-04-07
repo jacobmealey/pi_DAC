@@ -67,15 +67,19 @@ static long dac_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	// IOCTL cmds
 	switch (cmd) {
-	case DAC_EN:
+	case DAC_IOEN:
 		printk("Dac Enabled");
 		dac_dat->dac_enable = true;
 		break;
-	case DAC_DE:
+	case DAC_IODE:
 		printk("Dac Disabled");
 		dac_dat->dac_enable = false;
 		break;
-	case DAC_SD:
+	case DAC_IOSF:
+		if(arg > MAX_FREQ){
+			printk("Frequincy value too large");
+			return -EINVAL;
+		}
 		printk("Set frequency to %ld", arg);
 		dac_dat->dac_freq = arg;
 		break;
@@ -122,12 +126,8 @@ static ssize_t dac_write(struct file *filp, const char __user *buf,
 		kfree(data);
 		return -EFAULT;
 	}
-	// perhaps this should be done in dac_release()?
-	//data[count] = 0;
-
 	// ----- Beginning of writing to pins ----- //
 	printk("beginning of for loop");
-	i = 0;
 	for (i = 0; i < count; i++) {
 		gpiod_set_value(dac_dat->gpio_dac_b7, (data[i] >> 7) & 0x1);
 		gpiod_set_value(dac_dat->gpio_dac_b6, (data[i] >> 6) & 0x1);
@@ -137,12 +137,12 @@ static ssize_t dac_write(struct file *filp, const char __user *buf,
 		gpiod_set_value(dac_dat->gpio_dac_b2, (data[i] >> 2) & 0x1);
 		gpiod_set_value(dac_dat->gpio_dac_b1, (data[i] >> 1) & 0x1);
 		gpiod_set_value(dac_dat->gpio_dac_b0, (data[i]) & 0x1);
-		udelay(dac_dat->dac_freq);
+		udelay(100000/dac_dat->dac_freq);
 	}
 
 	// This free() is only being called if the code is succseful, if the
 	// function fails at some point we will not get the memory back!
-	kfree(data
+	kfree(data);
 	return count;
 }
 
