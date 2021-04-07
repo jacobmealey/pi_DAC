@@ -76,7 +76,7 @@ static long dac_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		dac_dat->dac_enable = false;
 		break;
 	case DAC_IOSF:
-		if(arg > MAX_FREQ){
+		if (arg > MAX_FREQ) {
 			printk("Frequincy value too large");
 			return -EINVAL;
 		}
@@ -137,7 +137,7 @@ static ssize_t dac_write(struct file *filp, const char __user *buf,
 		gpiod_set_value(dac_dat->gpio_dac_b2, (data[i] >> 2) & 0x1);
 		gpiod_set_value(dac_dat->gpio_dac_b1, (data[i] >> 1) & 0x1);
 		gpiod_set_value(dac_dat->gpio_dac_b0, (data[i]) & 0x1);
-		udelay(100000/dac_dat->dac_freq);
+		udelay(100000 / dac_dat->dac_freq);
 	}
 
 	// This free() is only being called if the code is succseful, if the

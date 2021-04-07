@@ -17,16 +17,17 @@
 void generate_sin_buffer(char **buff, int cycles, int resolution);
 int write_to_dac(char *buff, int size, int DEL);
 
-int main(){
+int main()
+{
 	if (fork() == 0) {
 		char *buff = NULL;
 		generate_sin_buffer(&buff, 2, 200);
-		if(!write_to_dac(buff, 2 * 200, 1000))
+		if (!write_to_dac(buff, 2 * 200, 1000))
 			printf("Test 1 passed correctly\n");
 	} else {
 		char *buff = NULL;
 		generate_sin_buffer(&buff, 5, 256);
-		if(!write_to_dac(buff, 5 * 255, 500000))
+		if (!write_to_dac(buff, 5 * 255, 500000))
 			printf("Test 2 passed correctly\n");
 	}
 	return 0;
@@ -40,22 +41,24 @@ int write_to_dac(char *buff, int size, int DEL)
 	printf("%d", buff[0]);
 
 	int fd = open("/dev/dac", O_WRONLY);
-	if(fd < 0){
+	if (fd < 0) {
 		ret = fd;
 		goto end_block;
 	}
 
-	// check if its  opened 
-	if((ret = ioctl(fd, DAC_IOEN)) < 0) goto end_block;
-	if((ret = ioctl(fd, DAC_IOSF, DEL)) < 0) goto end_block;
-	if((ret = ioctl(fd, DAC_IODE)) < 0) goto end_block;
+	// check if its  opened
+	if ((ret = ioctl(fd, DAC_IOEN)) < 0)
+		goto end_block;
+	if ((ret = ioctl(fd, DAC_IOSF, DEL)) < 0)
+		goto end_block;
+	if ((ret = ioctl(fd, DAC_IODE)) < 0)
+		goto end_block;
 	close(fd);
 	return ret;
 
 end_block:
 	close(fd);
 	return ret;
-
 }
 
 void generate_sin_buffer(char **buff, int cycles, int resolution)
